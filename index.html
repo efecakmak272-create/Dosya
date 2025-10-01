@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>System Alert</title>
+<style>
+  :root{--lime:#7CFC00;--bg:#000}
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Consolas, "Courier New", monospace;background:var(--bg);color:var(--lime)}
+  .center{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+  h1{font-size:48px;letter-spacing:6px;margin:0}
+  p{opacity:.9;font-size:18px}
+  .blink{animation:blink 700ms steps(1,end) infinite}
+  @keyframes blink{50%{opacity:0}}
+  .bsodScreen{background:#001E88;color:#fff;width:100%;height:100%;display:flex;align-items:center;justify-content:center;padding:40px}
+  .bsodInner{max-width:900px}
+  #scare{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#000;z-index:9999;
+    visibility:hidden;opacity:0;transition:opacity .2s;
+    flex-direction:column;
+  }
+  .face{width:70vmin;height:70vmin;filter:drop-shadow(0 0 24px rgba(255,0,0,.6));transform:scale(1.05)}
+  @keyframes shake{0%{transform:translate(0,0)}25%{transform:translate(12px,0)}50%{transform:translate(-12px,0)}75%{transform:translate(12px,0)}100%{transform:translate(0,0)}}
+  .shaky{animation:shake .7s}
+  .hint{font-size:13px;opacity:.8;margin-top:18px}
+  .counter{font-family:monospace;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div id="initial" class="center">
+  <h1 class="blink">⚠ SYSTEM HACKED ⚠</h1>
+  <p id="line">Tüm dosyalarınız yükleniyor</p>
+  <div class="counter" id="cnt">0%</div>
+  <div class="hint">Kapatmak için ESC — ama önce biraz kork.</div>
+</div>
+
+<div id="bsod" class="bsodScreen" style="display:none">
+  <div class="bsodInner">
+    <h1>:(  Your PC ran into a problem and needs to restart.</h1>
+    <p>A critical error occurred in <strong>NTKERNEL32.SYS</strong>. If this is the first time you've seen this stop error screen, restart your computer.</p>
+    <p class="hint">Press ESC to exit this screen.</p>
+  </div>
+</div>
+
+<div id="scare" role="dialog" aria-hidden="true">
+  <svg class="face" viewBox="0 0 800 800" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <radialGradient id="g" cx="50%" cy="40%" r="60%">
+        <stop offset="0%" stop-color="#ff3b3b"/>
+        <stop offset="60%" stop-color="#7f0000"/>
+        <stop offset="100%" stop-color="#000"/>
+      </radialGradient>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#g)"/>
+    <g transform="translate(140,110) scale(0.6)">
+      <path d="M200 120 C120 80 40 120 40 220 C40 340 160 420 200 540 C240 420 360 340 360 220 C360 120 280 80 200 120 Z" fill="#000"/>
+      <circle cx="120" cy="220" r="40" fill="#fff" />
+      <circle cx="280" cy="220" r="40" fill="#fff" />
+      <circle cx="120" cy="220" r="18" fill="#000" />
+      <circle cx="280" cy="220" r="18" fill="#000" />
+      <path d="M120 380 C180 420 220 420 280 380" stroke="#000" stroke-width="28" stroke-linecap="round" fill="none"/>
+    </g>
+  </svg>
+  <div style="color:white;font-weight:bold;font-size:28px;margin-top:12px;text-align:center" id="insult"></div>
+</div>
+
+<script>
+const cnt = document.getElementById('cnt');
+const line = document.getElementById('line');
+const initial = document.getElementById('initial');
+const bsod = document.getElementById('bsod');
+const scare = document.getElementById('scare');
+const insultBox = document.getElementById('insult');
+
+let percent = 0;
+const percentInterval = setInterval(()=> {
+  percent += Math.floor(Math.random()*15)+5;
+  if(percent>99) percent = 99;
+  cnt.textContent = percent + '%';
+  line.textContent = "Tüm dosyalarınız yükleniyor" + '.'.repeat((percent%4));
+}, 200);
+
+setTimeout(()=> {
+  clearInterval(percentInterval);
+  initial.style.display = 'none';
+  bsod.style.display = 'flex';
+  setTimeout(triggerScare, 350);
+}, 3000);
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape'){
+    try { speechSynthesis.cancel(); } catch(e){}
+    document.body.innerHTML = '';
+  }
+});
+
+function triggerScare(){
+  scare.style.visibility = 'visible';
+  scare.style.opacity = '1';
+  scare.classList.add('shaky');
+
+  const insults = [
+    "Siktir lan, korktun ha?!",
+    "Ne yüzsüz adamsın, kaç!",
+    "Kanka rezilsin, git kapa çeneni!",
+    "Aman ya, tüh, korktun işte!"
+  ];
+  const chosen = insults[Math.floor(Math.random()*insults.length)];
+  insultBox.textContent = chosen;
+
+  // TTS (tarayıcı izinliyse)
+  try {
+    const utter = new SpeechSynthesisUtterance(chosen);
+    utter.lang = 'tr-TR';
+    utter.volume = 1;
+    utter.rate = 1.0;
+    utter.pitch = 1.2;
+    const voices = speechSynthesis.getVoices();
+    if(voices && voices.length){
+      const tur = voices.find(v => v.lang && v.lang.startsWith('tr'));
+      if(tur) utter.voice = tur;
+    }
+    speechSynthesis.speak(utter);
+  } catch(e){}
+
+  // kısa keskin ses
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(700, ctx.currentTime);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.exponentialRampToValueAtTime(1.0, ctx.currentTime + 0.02);
+    o.start();
+    o.frequency.exponentialRampToValueAtTime(1400, ctx.currentTime + 0.1);
+    setTimeout(()=>{ 
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.05);
+      try{ o.stop(); ctx.close(); }catch(e){}
+    }, 220);
+  } catch(e){}
+
+  document.body.style.background = 'radial-gradient(circle at 50% 20%, rgba(255,255,255,0.12), transparent 30%), black';
+
+  // auto-hide after short while, leave BSOD visible
+  setTimeout(()=> {
+    if(scare) {
+      scare.style.opacity = '0';
+      scare.style.visibility = 'hidden';
+      scare.classList.remove('shaky');
+      bsod.style.display = 'flex';
+    }
+  }, 2500);
+}
+
+if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+  speechSynthesis.onvoiceschanged = function(){};
+}
+</script>
+</body>
+</html>
